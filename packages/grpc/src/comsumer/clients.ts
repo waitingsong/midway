@@ -1,3 +1,4 @@
+import * as  assert from 'assert';
 import {
   Config,
   Init,
@@ -47,14 +48,19 @@ export class GRPCClients extends Map {
     });
     const allProto = loadPackageDefinition(packageDefinition);
     const packageProto: any = finePackageProto(allProto, options.package);
+
+    let connectionService: T | undefined;
+
     for (const definition in packageDefinition) {
       if (!packageDefinition[definition]['format']) {
         const serviceName = definition.replace(`${options.package}.`, '');
-        const connectionService = new packageProto[serviceName](
-          options.url,
-          credentials.createInsecure(),
-          options.clientOptions
-        );
+        if (! connectionService) {
+          connectionService = new packageProto[serviceName](
+            options.url,
+            credentials.createInsecure(),
+            options.clientOptions
+          );
+        }
         for (const methodName of Object.keys(packageDefinition[definition])) {
           const originMethod = connectionService[methodName];
           connectionService[methodName] = (
@@ -70,9 +76,11 @@ export class GRPCClients extends Map {
             connectionService[methodName];
         }
         this.set(definition, connectionService);
-        return connectionService;
       }
     }
+
+    assert(connectionService, 'No service found in proto file, path:' + options.protoPath);
+    return connectionService;
   }
 
   getService<T>(serviceName: string): T {
